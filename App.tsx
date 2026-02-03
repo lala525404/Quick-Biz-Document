@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+iimport React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -137,44 +137,34 @@ export default function App() {
     };
   }, [onDragging]);
 
-  // 👇 수정된 PDF 다운로드 함수 (고화질 + 비율 깨짐 방지)
   const exportPDF = async () => {
     const activePages = pagesRef.current.filter(p => p !== null);
     if (activePages.length === 0) return;
     setIsExporting(true);
     
     try {
-      // 폰트 로딩 대기
       await document.fonts.ready;
       
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210; // A4 가로 (mm)
-      // const pdfHeight = 297; // A4 세로 (사용안함: 비율대로 넣기 위해)
+      const pdfWidth = 210; 
 
       for (let i = 0; i < activePages.length; i++) {
         const page = activePages[i];
         if (!page) continue;
 
-        // 1. 고화질 캡처 설정
         const canvas = await html2canvas(page, {
-          scale: 3, // 2 -> 3으로 변경 (화질 향상)
+          scale: 3, 
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
-          // 스크롤바 제외하고 정확한 크기만 캡처
           width: page.offsetWidth, 
           height: page.offsetHeight
         });
 
         const imgData = canvas.toDataURL('image/png');
-        
-        // 2. 이미지 비율에 맞춰 높이 자동 계산 (찌부 방지 핵심!)
         const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
-        // 페이지 추가
         if (i > 0) pdf.addPage();
-        
-        // 3. 계산된 높이(imgHeight)로 이미지 넣기
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
       }
       
@@ -698,8 +688,7 @@ export default function App() {
             key={pageIndex}
             ref={el => { pagesRef.current[pageIndex] = el; }}
             className="bg-white shadow-2xl relative overflow-hidden shrink-0" 
-           {/* minHeight -> height 로 변경 (강제로 A4 크기 고정) */}
-style={{ width: '210mm', height: '297mm', padding: '15mm', boxSizing: 'border-box' }}
+            style={{ width: '210mm', height: '297mm', padding: '15mm', boxSizing: 'border-box' }}
           >
             {pageIndex === 0 && doc.stampUrl && (
               <div 
