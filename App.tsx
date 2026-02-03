@@ -24,7 +24,6 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { DocumentType, TaxOption, DocumentState, Item } from './types';
 import { formatNumber, numberToKorean, calculateTotals, formatPhoneNumber, formatBizNo } from './utils';
-import * as XLSX from 'xlsx';
 
 const INITIAL_STATE: DocumentState = {
   type: DocumentType.ESTIMATE,
@@ -137,53 +136,6 @@ export default function App() {
       window.removeEventListener('touchend', onDragEnd);
     };
   }, [onDragging]);
-
-  // --------------- 엑셀 다운로드 기능 추가됨 ---------------
-  const handleExcelDownload = () => {
-    const { total, subTotal, vat } = calculateTotals(doc.items, doc.taxOption);
-    
-    // 1. 엑셀 데이터 구성
-    const excelData = [
-      [doc.type === 'ESTIMATE' ? "견적서" : doc.type === 'TRANSACTION_STATEMENT' ? "거래명세서" : "영수증"],
-      [],
-      ["문서번호", doc.docNo, "", "날짜", doc.date],
-      [],
-      ["[공급자 정보]"],
-      ["등록번호", doc.supplier.bizNo, "상호", doc.supplier.name],
-      ["대표자", doc.supplier.owner, "사업장", doc.supplier.address],
-      ["업태", doc.supplier.bizType, "종목", doc.supplier.bizItem],
-      ["연락처", doc.supplier.contact, "", ""],
-      [],
-      ["[공급받는자 정보]"],
-      ["등록번호", doc.client.bizNo, "상호", doc.client.name],
-      ["대표자", doc.client.owner, "", ""],
-      [],
-      ["[품목 리스트]"],
-      ["품목명", "규격", "수량", "단가", "공급가액", "비고"],
-      ...doc.items.map((item) => [
-        item.name,
-        item.spec,
-        item.qty,
-        item.unitPrice,
-        item.qty * item.unitPrice,
-        ""
-      ]),
-      [],
-      ["공급가액", "", "", "", formatNumber(subTotal)],
-      ["세액", "", "", "", formatNumber(vat)],
-      ["합계금액", "", "", "", formatNumber(total)],
-      [],
-      ["위와 같이 확인합니다."],
-    ];
-
-    // 2. 엑셀 파일 생성 및 저장
-    const ws = XLSX.utils.aoa_to_sheet(excelData);
-    ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, `${doc.type}_${doc.docNo}.xlsx`);
-  };
-  // --------------------------------------------------------
 
   const exportPDF = async () => {
     const activePages = pagesRef.current.filter(p => p !== null);
@@ -600,6 +552,20 @@ export default function App() {
                 <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">대표자명</label>
                 <input placeholder="홍길동" value={doc.supplier.owner} onChange={(e) => handleSupplierChange('owner', e.target.value)} className={inputBaseClass} />
               </div>
+              {/* 추가된 부분 */}
+              <div className="col-span-2">
+                <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">사업장 주소</label>
+                <input placeholder="서울시 강남구..." value={doc.supplier.address} onChange={(e) => handleSupplierChange('address', e.target.value)} className={inputBaseClass} />
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">업태</label>
+                <input placeholder="서비스" value={doc.supplier.bizType} onChange={(e) => handleSupplierChange('bizType', e.target.value)} className={inputBaseClass} />
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">종목</label>
+                <input placeholder="소프트웨어개발" value={doc.supplier.bizItem} onChange={(e) => handleSupplierChange('bizItem', e.target.value)} className={inputBaseClass} />
+              </div>
+              {/* 추가된 부분 끝 */}
               <div className="col-span-2">
                 <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">연락처</label>
                 <input placeholder="010-0000-0000" value={doc.supplier.contact} onChange={(e) => handleSupplierChange('contact', e.target.value)} className={inputBaseClass} />
@@ -701,14 +667,6 @@ export default function App() {
         </div>
 
         <div className="shrink-0 bg-white pt-4 pb-2 border-t border-gray-200 mt-auto space-y-3">
-           {/* 엑셀 다운로드 버튼 */}
-          <button 
-            onClick={handleExcelDownload} 
-            className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-black shadow-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-all active:scale-95"
-          >
-            <FileText size={20} /> 엑셀로 저장하기
-          </button>
-           {/* PDF 다운로드 버튼 */}
           <button onClick={exportPDF} disabled={isExporting} className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-black shadow-xl bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-95 disabled:bg-gray-400 disabled:shadow-none tracking-tight">
             {isExporting ? 'Creating PDF...' : <><Download size={20} /> PDF 다운로드</>}
           </button>
