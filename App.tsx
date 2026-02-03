@@ -242,10 +242,10 @@ export default function App() {
                 <Globe size={10} className="animate-pulse" />
                 QUICKBIZ PRO BUSINESS AUTOMATION
               </div>
-              <h1 className="text-3xl md:text-5xl font-black text-white leading-relaxed tracking-tight">
-                견적서, 명세서, 영수증,<br/>
-                <span className="text-blue-200 italic">인감까지</span> 한번에!
-              </h1>
+                 <h1 className="text-3xl md:text-5xl font-black text-white leading-loose tracking-tight">
+                     견적서, 명세서, 영수증,<br/>
+                    <span className="text-blue-200 italic">인감까지</span> 한번에!
+                </h1>
               <div className="space-y-4">
                 <p className="text-sm md:text-base text-blue-50/90 leading-relaxed max-w-lg font-bold">
                   프리랜서, 1인 기업가, 소상공인을 위한 대한민국 최고의 스마트 문서 솔루션. 
