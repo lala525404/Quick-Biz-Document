@@ -1,72 +1,77 @@
-
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-FM3WNRNV47"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FM3WNRNV47"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-FM3WNRNV47');
+    </script>
+    
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-MJLJB53Z');</script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4663811683108454" crossorigin="anonymous"></script>
 
-  gtag('config', 'G-FM3WNRNV47');
-</script>
-    <!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-MJLJB53Z');</script>
-<!-- End Google Tag Manager -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4663811683108454"
-     crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>퀵비즈 프로(QuickBiz Pro) - 스마트 문서 발급기</title>
+    
+    <title>무료 견적서/거래명세서 발급기 - 회원가입 없는 퀵비즈(QuickBiz) | 전자도장 PDF 저장</title>
+    <meta name="description" content="로그인 없이 바로 사용하는 무료 온라인 견적서, 거래명세서, 간이영수증 양식입니다. 엑셀 없이 자동 계산되고 도장까지 찍어서 PDF로 즉시 저장하세요. 프리랜서, 소상공인 필수 업무 도구.">
+    <meta name="keywords" content="무료견적서, 거래명세서양식, 간이영수증발급, 온라인견적서, 엑셀견적서, 전자도장, PDF변환, 프리랜서견적서, 퀵비즈">
+    <meta name="author" content="QuickBiz Pro">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="30초 완성! 초간단 무료 견적서/명세서 발급기">
+    <meta property="og:description" content="엑셀보다 편합니다. 로그인 없이 도장 찍고 PDF로 바로 저장하세요. (무료)">
+    <meta property="og:url" content="https://quick-invoice.vercel.app">
+    <meta property="og:site_name" content="퀵비즈 프로">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
     <style>
-        :root {
-            color-scheme: light;
-        }
-        body
-        <!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MJLJB53Z"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
-        {
-            font-family: 'Noto Sans KR', 'Inter', sans-serif;
-            background-color: #f8fafc;
-            color: #1e293b;
-            margin: 0;
-            overflow: hidden; /* Main window fixed, sections scroll */
-        }
-        @media print {
-            .no-print { display: none !important; }
-        }
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+      :root {
+        color-scheme: light;
+      }
+      body {
+        font-family: 'Noto Sans KR', 'Inter', sans-serif;
+        background-color: #f8fafc;
+        color: #1e293b;
+        margin: 0;
+        overflow: hidden; 
+      }
+      @media print {
+        .no-print { display: none !important; }
+      }
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "html2canvas": "https://esm.sh/html2canvas@^1.4.1",
-    "jspdf": "https://esm.sh/jspdf@^4.1.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
-<body>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.2.4",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+        "react/": "https://esm.sh/react@^19.2.4/",
+        "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+        "html2canvas": "https://esm.sh/html2canvas@^1.4.1",
+        "jspdf": "https://esm.sh/jspdf@^4.1.0"
+      }
+    }
+    </script>
+    <link rel="stylesheet" href="/index.css">
+  </head>
+  <body>
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MJLJB53Z"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
-</body>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>
