@@ -146,8 +146,13 @@ export default function App() {
       await document.fonts.ready;
       
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = 210;  // A4 가로
-      const pageHeight = 297; // A4 세로
+      const pdfWidth = 210; // A4 Width in mm
+      const pdfHeight = 297; // A4 Height in mm
+      
+      // 🚨 안전 여백 설정 (상하좌우 5mm씩 여유를 둠)
+      const margin = 10; 
+      const maxImgWidth = pdfWidth - margin; 
+      const maxImgHeight = pdfHeight - margin;
 
       for (let i = 0; i < activePages.length; i++) {
         const page = activePages[i];
@@ -164,27 +169,29 @@ export default function App() {
 
         const imgData = canvas.toDataURL('image/png');
         
-        // --- 🔍 핵심 수정: 비율 유지하면서 A4 안에 쏙 넣기 (Shrink to Fit) ---
-        // 1. 가로(210mm) 기준으로 했을 때의 높이 계산
-        const imgHeight = (canvas.height * pageWidth) / canvas.width;
-        
-        let finalWidth = pageWidth;
-        let finalHeight = imgHeight;
+        // --- 📏 비율 자동 계산 로직 (절대 잘리지 않게 축소) ---
+        const imgProps = pdf.getImageProperties(imgData);
+        const imgRatio = imgProps.width / imgProps.height;
+        const pageRatio = maxImgWidth / maxImgHeight;
 
-        // 2. 만약 높이가 A4(297mm)보다 크다면? -> 높이 기준으로 다시 축소!
-        if (imgHeight > pageHeight) {
-          finalHeight = pageHeight;
-          finalWidth = (canvas.width * finalHeight) / canvas.height;
+        let finalWidth, finalHeight;
+
+        // 이미지가 페이지보다 납작하면 -> 너비 기준 맞춤
+        if (imgRatio > pageRatio) {
+          finalWidth = maxImgWidth;
+          finalHeight = finalWidth / imgRatio;
+        } else {
+          // 이미지가 페이지보다 길쭉하면 -> 높이 기준 맞춤 (이게 작동해서 잘림 방지됨)
+          finalHeight = maxImgHeight;
+          finalWidth = finalHeight * imgRatio;
         }
 
-        // 3. 페이지 추가
-        if (i > 0) pdf.addPage();
-        
-        // 4. 중앙 정렬을 위한 X 좌표 계산 (가로가 줄어들었을 경우 대비)
-        const x = (pageWidth - finalWidth) / 2;
+        // 중앙 정렬 좌표 계산
+        const x = (pdfWidth - finalWidth) / 2;
+        const y = (pdfHeight - finalHeight) / 2;
 
-        // 5. PDF에 이미지 넣기
-        pdf.addImage(imgData, 'PNG', x, 0, finalWidth, finalHeight);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
       }
       
       pdf.save(`${doc.type}_${doc.docNo}.pdf`);
