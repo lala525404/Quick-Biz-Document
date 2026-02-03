@@ -1,0 +1,7 @@
+{
+  "name": "Quick Biz Document Generator",
+  "description": "A professional tool for freelancers and small business owners to easily create, preview, and download estimates, transaction statements, and receipts as PDFs. Features automatic tax calculation, Korean currency formatting, and digital stamp uploading.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
