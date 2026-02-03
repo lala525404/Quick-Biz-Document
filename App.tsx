@@ -145,17 +145,16 @@ export default function App() {
     try {
       await document.fonts.ready;
       
-      // A4 용지 설정 (세로 방향, mm 단위, A4 사이즈)
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210; // A4 가로
-      const pdfHeight = 297; // A4 세로
+      const pageWidth = 210;  // A4 가로
+      const pageHeight = 297; // A4 세로
 
       for (let i = 0; i < activePages.length; i++) {
         const page = activePages[i];
         if (!page) continue;
 
         const canvas = await html2canvas(page, {
-          scale: 3, // 고해상도 (깨짐 방지)
+          scale: 3, 
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
@@ -164,12 +163,28 @@ export default function App() {
         });
 
         const imgData = canvas.toDataURL('image/png');
+        
+        // --- 🔍 핵심 수정: 비율 유지하면서 A4 안에 쏙 넣기 (Shrink to Fit) ---
+        // 1. 가로(210mm) 기준으로 했을 때의 높이 계산
+        const imgHeight = (canvas.height * pageWidth) / canvas.width;
+        
+        let finalWidth = pageWidth;
+        let finalHeight = imgHeight;
 
+        // 2. 만약 높이가 A4(297mm)보다 크다면? -> 높이 기준으로 다시 축소!
+        if (imgHeight > pageHeight) {
+          finalHeight = pageHeight;
+          finalWidth = (canvas.width * finalHeight) / canvas.height;
+        }
+
+        // 3. 페이지 추가
         if (i > 0) pdf.addPage();
         
-        // 🚨 핵심 수정: 계산하지 않고 강제로 A4 사이즈(210x297)로 맞춤
-        // 이렇게 하면 원본 비율과 상관없이 A4 용지에 꽉 차게 들어갑니다.
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        // 4. 중앙 정렬을 위한 X 좌표 계산 (가로가 줄어들었을 경우 대비)
+        const x = (pageWidth - finalWidth) / 2;
+
+        // 5. PDF에 이미지 넣기
+        pdf.addImage(imgData, 'PNG', x, 0, finalWidth, finalHeight);
       }
       
       pdf.save(`${doc.type}_${doc.docNo}.pdf`);
