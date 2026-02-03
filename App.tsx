@@ -1,36 +1,30 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Trash2, 
   Download, 
   FileText, 
-  Image as ImageIcon,
-  ExternalLink,
-  CheckCircle,
-  ArrowRight,
-  Sparkles,
-  HelpCircle,
-  ShieldCheck,
-  Zap,
-  BookOpen,
-  Info,
-  MousePointerClick,
-  FileCheck,
-  Calculator,
-  Scale,
-  Award,
-  Globe,
-  Settings,
-  Star,
-  Lock,
-  History,
+  Image as ImageIcon, 
+  ExternalLink, 
+  CheckCircle, 
+  ArrowRight, 
+  Sparkles, 
+  ShieldCheck, 
+  Zap, 
+  BookOpen, 
+  Scale, 
+  Award, 
+  Globe, 
+  Settings, 
+  Lock, 
+  History, 
   FileSearch
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { DocumentType, TaxOption, DocumentState, Item } from './types';
 import { formatNumber, numberToKorean, calculateTotals, formatPhoneNumber, formatBizNo } from './utils';
+import * as XLSX from 'xlsx';
 
 const INITIAL_STATE: DocumentState = {
   type: DocumentType.ESTIMATE,
@@ -71,7 +65,7 @@ export default function App() {
   const introScrollRef = useRef<HTMLDivElement>(null);
 
   const handleTypeChange = (type: DocumentType) => setDoc(prev => ({ ...prev, type }));
-  
+   
   const handleSupplierChange = (field: keyof typeof doc.supplier, value: string) => {
     let formattedValue = value;
     if (field === 'contact') formattedValue = formatPhoneNumber(value);
@@ -144,6 +138,53 @@ export default function App() {
     };
   }, [onDragging]);
 
+  // --------------- 엑셀 다운로드 기능 추가됨 ---------------
+  const handleExcelDownload = () => {
+    const { total, subTotal, vat } = calculateTotals(doc.items, doc.taxOption);
+    
+    // 1. 엑셀 데이터 구성
+    const excelData = [
+      [doc.type === 'ESTIMATE' ? "견적서" : doc.type === 'TRANSACTION_STATEMENT' ? "거래명세서" : "영수증"],
+      [],
+      ["문서번호", doc.docNo, "", "날짜", doc.date],
+      [],
+      ["[공급자 정보]"],
+      ["등록번호", doc.supplier.bizNo, "상호", doc.supplier.name],
+      ["대표자", doc.supplier.owner, "사업장", doc.supplier.address],
+      ["업태", doc.supplier.bizType, "종목", doc.supplier.bizItem],
+      ["연락처", doc.supplier.contact, "", ""],
+      [],
+      ["[공급받는자 정보]"],
+      ["등록번호", doc.client.bizNo, "상호", doc.client.name],
+      ["대표자", doc.client.owner, "", ""],
+      [],
+      ["[품목 리스트]"],
+      ["품목명", "규격", "수량", "단가", "공급가액", "비고"],
+      ...doc.items.map((item) => [
+        item.name,
+        item.spec,
+        item.qty,
+        item.unitPrice,
+        item.qty * item.unitPrice,
+        ""
+      ]),
+      [],
+      ["공급가액", "", "", "", formatNumber(subTotal)],
+      ["세액", "", "", "", formatNumber(vat)],
+      ["합계금액", "", "", "", formatNumber(total)],
+      [],
+      ["위와 같이 확인합니다."],
+    ];
+
+    // 2. 엑셀 파일 생성 및 저장
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+    ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    XLSX.writeFile(wb, `${doc.type}_${doc.docNo}.xlsx`);
+  };
+  // --------------------------------------------------------
+
   const exportPDF = async () => {
     const activePages = pagesRef.current.filter(p => p !== null);
     if (activePages.length === 0) return;
@@ -181,7 +222,7 @@ export default function App() {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element && introScrollRef.current) {
-      const top = element.offsetTop - 100; // Adjusted offset to prevent title clipping
+      const top = element.offsetTop - 100;
       introScrollRef.current.scrollTo({ top, behavior: 'smooth' });
     }
   };
@@ -216,7 +257,6 @@ export default function App() {
   if (showIntro) {
     return (
       <div ref={introScrollRef} className="h-screen bg-white flex flex-col scroll-smooth overflow-y-auto overflow-x-hidden relative">
-        {/* Navigation Bar */}
         <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-100 px-6 py-4 shadow-sm">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <div className="flex items-center gap-2 font-black text-2xl text-blue-600 tracking-tighter cursor-pointer" onClick={() => introScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -238,13 +278,12 @@ export default function App() {
           </div>
         </nav>
 
-        {/* Hero Section */}
         <section id="hero" className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 pt-20 pb-36 px-6 relative">
           <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
             <div className="absolute top-10 left-10 w-96 h-96 bg-white rounded-full blur-[120px]"></div>
             <div className="absolute bottom-10 right-10 w-[500px] h-[500px] bg-indigo-400 rounded-full blur-[150px]"></div>
           </div>
-          
+           
           <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
             <div className="space-y-7 animate-in fade-in slide-in-from-left duration-700">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-blue-50 text-[10px] font-black backdrop-blur-md">
@@ -316,7 +355,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Feature Highlights */}
         <section id="features" className="py-24 px-6 bg-white">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-20 space-y-3">
@@ -326,7 +364,7 @@ export default function App() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {[
-                { icon: <Calculator size={24} className="text-blue-500" />, title: "지능형 자동 산출", desc: "단가와 수량만 입력하면 모든 세무 금액이 실시간으로 완벽하게 산출됩니다." },
+                { icon: <Zap size={24} className="text-blue-500" />, title: "지능형 자동 산출", desc: "단가와 수량만 입력하면 모든 세무 금액이 실시간으로 완벽하게 산출됩니다." },
                 { icon: <ArrowRight size={24} className="text-emerald-500" />, title: "한글 금액 변환", desc: "숫자 금액을 '일금 삼백만원정'과 같은 표준 한글 표기로 자동 변환합니다." },
                 { icon: <ShieldCheck size={24} className="text-indigo-500" />, title: "데이터 보안 강화", desc: "서버 저장 없이 브라우저 메모리 내에서만 작동하여 유출 걱정이 없습니다." },
                 { icon: <FileText size={24} className="text-orange-500" />, title: "다중 페이지 지원", desc: "품목이 많아져도 자동으로 페이지가 분할되어 깔끔한 문서를 생성합니다." }
@@ -341,7 +379,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Business Knowledge Section (Fixed Clipping) */}
         <section id="knowledge" className="py-24 px-6 bg-slate-900 text-white relative">
           <div className="absolute top-0 right-0 w-1/3 h-full bg-blue-600/5 -skew-x-12 pointer-events-none"></div>
           <div className="max-w-7xl mx-auto relative z-10">
@@ -354,7 +391,7 @@ export default function App() {
                     신뢰받는 파트너가 되기 위한<br/>서류 작성 노하우를 확인하세요.
                   </p>
                 </div>
-                
+                 
                 <div className="space-y-7">
                   {[
                     { icon: <Scale />, title: "견적서의 효력", desc: "견적서는 계약 체결 전의 청약 유인입니다. 상대방이 승낙하고 서명할 경우 계약서와 동일한 효력을 가질 수 있으니 신중히 작성하세요." },
@@ -374,7 +411,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Dictionary card with extra padding to prevent cutoff */}
               <div className="bg-white/5 backdrop-blur-2xl p-8 md:p-10 rounded-[40px] border border-white/10 space-y-8 shadow-2xl mb-10 lg:mb-0">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-xl">
@@ -400,7 +436,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* FAQ Section */}
         <section id="faq" className="py-24 px-6 bg-white">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-16 space-y-3">
@@ -429,7 +464,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* CTA Section */}
         <section className="py-24 px-6">
           <div className="max-w-5xl mx-auto bg-blue-600 rounded-[56px] p-12 md:p-20 text-center space-y-8 relative overflow-hidden shadow-2xl shadow-blue-200">
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.25),transparent)]"></div>
@@ -449,7 +483,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Footer */}
         <footer className="bg-slate-50 text-slate-500 py-24 px-6 border-t border-slate-200">
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-4 gap-16">
             <div className="col-span-2 space-y-8">
@@ -505,7 +538,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-900 font-sans h-screen overflow-hidden">
-      
+       
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
         .preview-content { font-family: 'Noto Sans KR', sans-serif; }
@@ -623,7 +656,7 @@ export default function App() {
               <ImageIcon size={14} className="text-blue-500" />
               도장(인감) 및 마감 설정
             </h2>
-            
+             
             <a 
               href="https://stamp-remover.vercel.app" 
               target="_blank" 
@@ -667,7 +700,15 @@ export default function App() {
           </section>
         </div>
 
-        <div className="shrink-0 bg-white pt-4 pb-2 border-t border-gray-200 mt-auto">
+        <div className="shrink-0 bg-white pt-4 pb-2 border-t border-gray-200 mt-auto space-y-3">
+           {/* 엑셀 다운로드 버튼 */}
+          <button 
+            onClick={handleExcelDownload} 
+            className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-black shadow-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-all active:scale-95"
+          >
+            <FileText size={20} /> 엑셀로 저장하기
+          </button>
+           {/* PDF 다운로드 버튼 */}
           <button onClick={exportPDF} disabled={isExporting} className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-black shadow-xl bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-95 disabled:bg-gray-400 disabled:shadow-none tracking-tight">
             {isExporting ? 'Creating PDF...' : <><Download size={20} /> PDF 다운로드</>}
           </button>
