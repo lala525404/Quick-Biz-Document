@@ -137,6 +137,7 @@ export default function App() {
     };
   }, [onDragging]);
 
+  // 👇 여기가 진짜 핵심 수정된 부분입니다 (비율 유지 축소 로직)
   const exportPDF = async () => {
     const activePages = pagesRef.current.filter(p => p !== null);
     if (activePages.length === 0) return;
@@ -146,9 +147,13 @@ export default function App() {
       await document.fonts.ready;
       
       const pdf = new jsPDF('p', 'mm', 'a4');
-      // A4 사이즈 강제 고정
-      const pdfWidth = 210; 
-      const pdfHeight = 297; 
+      const pdfWidth = 210; // A4 가로
+      const pdfHeight = 297; // A4 세로
+      const margin = 10; // ⚠️ 안전 여백 10mm (잘림 방지용)
+
+      // 여백을 뺀 실제 사용 가능한 공간
+      const availWidth = pdfWidth - (margin * 2);
+      const availHeight = pdfHeight - (margin * 2);
 
       for (let i = 0; i < activePages.length; i++) {
         const page = activePages[i];
@@ -164,13 +169,26 @@ export default function App() {
         });
 
         const imgData = canvas.toDataURL('image/png');
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+
+        // 📐 비율 계산 (여기가 마법입니다)
+        // 가로로 맞출 때 비율 vs 세로로 맞출 때 비율 중 '더 작은 것'을 선택
+        // 그래야 종이 밖으로 튀어나가지 않습니다.
+        const widthRatio = availWidth / imgWidth;
+        const heightRatio = availHeight / imgHeight;
+        const scaleFactor = Math.min(widthRatio, heightRatio);
+
+        // 최종 크기 결정
+        const finalWidth = imgWidth * scaleFactor;
+        const finalHeight = imgHeight * scaleFactor;
+
+        // 종이 정중앙에 배치 좌표 계산
+        const xPos = (pdfWidth - finalWidth) / 2;
+        const yPos = (pdfHeight - finalHeight) / 2;
 
         if (i > 0) pdf.addPage();
-        
-        // 🚨 비율 계산 제거! 
-        // 0, 0 좌표에서 시작해서 210x297 크기로 무조건 꽉 채웁니다.
-        // 이렇게 하면 잘릴 수가 없습니다. (대신 약간 눌려 보일 수 있음)
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, 'PNG', xPos, yPos, finalWidth, finalHeight);
       }
       
       pdf.save(`${doc.type}_${doc.docNo}.pdf`);
