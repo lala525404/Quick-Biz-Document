@@ -145,15 +145,17 @@ export default function App() {
     try {
       await document.fonts.ready;
       
+      // A4 용지 설정 (세로 방향, mm 단위, A4 사이즈)
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210; 
+      const pdfWidth = 210; // A4 가로
+      const pdfHeight = 297; // A4 세로
 
       for (let i = 0; i < activePages.length; i++) {
         const page = activePages[i];
         if (!page) continue;
 
         const canvas = await html2canvas(page, {
-          scale: 3, 
+          scale: 3, // 고해상도 (깨짐 방지)
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
@@ -162,10 +164,12 @@ export default function App() {
         });
 
         const imgData = canvas.toDataURL('image/png');
-        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
+        
+        // 🚨 핵심 수정: 계산하지 않고 강제로 A4 사이즈(210x297)로 맞춤
+        // 이렇게 하면 원본 비율과 상관없이 A4 용지에 꽉 차게 들어갑니다.
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
       
       pdf.save(`${doc.type}_${doc.docNo}.pdf`);
@@ -560,7 +564,6 @@ export default function App() {
                 <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">대표자명</label>
                 <input placeholder="홍길동" value={doc.supplier.owner} onChange={(e) => handleSupplierChange('owner', e.target.value)} className={inputBaseClass} />
               </div>
-              {/* 추가된 부분 */}
               <div className="col-span-2">
                 <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">사업장 주소</label>
                 <input placeholder="서울시 강남구..." value={doc.supplier.address} onChange={(e) => handleSupplierChange('address', e.target.value)} className={inputBaseClass} />
@@ -573,7 +576,6 @@ export default function App() {
                 <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">종목</label>
                 <input placeholder="소프트웨어개발" value={doc.supplier.bizItem} onChange={(e) => handleSupplierChange('bizItem', e.target.value)} className={inputBaseClass} />
               </div>
-              {/* 추가된 부분 끝 */}
               <div className="col-span-2">
                 <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">연락처</label>
                 <input placeholder="010-0000-0000" value={doc.supplier.contact} onChange={(e) => handleSupplierChange('contact', e.target.value)} className={inputBaseClass} />
