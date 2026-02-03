@@ -137,7 +137,7 @@ export default function App() {
     };
   }, [onDragging]);
 
-  // 👇 여기가 진짜 핵심 수정된 부분입니다 (비율 유지 축소 로직)
+  // 👇 사용자님 요청대로 "안전 구역(Save Line)" 안에 강제로 맞추는 로직 적용
   const exportPDF = async () => {
     const activePages = pagesRef.current.filter(p => p !== null);
     if (activePages.length === 0) return;
@@ -149,11 +149,11 @@ export default function App() {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = 210; // A4 가로
       const pdfHeight = 297; // A4 세로
-      const margin = 10; // ⚠️ 안전 여백 10mm (잘림 방지용)
-
-      // 여백을 뺀 실제 사용 가능한 공간
-      const availWidth = pdfWidth - (margin * 2);
-      const availHeight = pdfHeight - (margin * 2);
+      
+      // 🚨 안전 여백(Save Line) 설정: 상하좌우 10mm 안쪽으로만 인쇄됨
+      const margin = 10; 
+      const maxContentWidth = pdfWidth - (margin * 2); // 190mm
+      const maxContentHeight = pdfHeight - (margin * 2); // 277mm
 
       for (let i = 0; i < activePages.length; i++) {
         const page = activePages[i];
@@ -169,21 +169,25 @@ export default function App() {
         });
 
         const imgData = canvas.toDataURL('image/png');
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
+        
+        // 캔버스의 원래 비율 계산
+        const imgRatio = canvas.width / canvas.height;
+        const pageRatio = maxContentWidth / maxContentHeight;
 
-        // 📐 비율 계산 (여기가 마법입니다)
-        // 가로로 맞출 때 비율 vs 세로로 맞출 때 비율 중 '더 작은 것'을 선택
-        // 그래야 종이 밖으로 튀어나가지 않습니다.
-        const widthRatio = availWidth / imgWidth;
-        const heightRatio = availHeight / imgHeight;
-        const scaleFactor = Math.min(widthRatio, heightRatio);
+        let finalWidth, finalHeight;
 
-        // 최종 크기 결정
-        const finalWidth = imgWidth * scaleFactor;
-        const finalHeight = imgHeight * scaleFactor;
+        // 📏 핵심 로직: 종이보다 길쭉하면 높이에 맞추고, 넓직하면 너비에 맞춤
+        if (imgRatio > pageRatio) {
+          // 너비 기준으로 맞춤 (높이는 자동 축소됨)
+          finalWidth = maxContentWidth;
+          finalHeight = finalWidth / imgRatio;
+        } else {
+          // 높이 기준으로 맞춤 (이게 작동해서 밑이 잘리는 걸 막아줌)
+          finalHeight = maxContentHeight;
+          finalWidth = finalHeight * imgRatio;
+        }
 
-        // 종이 정중앙에 배치 좌표 계산
+        // 종이 정중앙에 배치하기 위한 좌표 계산
         const xPos = (pdfWidth - finalWidth) / 2;
         const yPos = (pdfHeight - finalHeight) / 2;
 
