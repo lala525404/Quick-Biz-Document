@@ -146,13 +146,9 @@ export default function App() {
       await document.fonts.ready;
       
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210; // A4 Width in mm
-      const pdfHeight = 297; // A4 Height in mm
-      
-      // 🚨 안전 여백 설정 (상하좌우 5mm씩 여유를 둠)
-      const margin = 10; 
-      const maxImgWidth = pdfWidth - margin; 
-      const maxImgHeight = pdfHeight - margin;
+      // A4 사이즈 강제 고정
+      const pdfWidth = 210; 
+      const pdfHeight = 297; 
 
       for (let i = 0; i < activePages.length; i++) {
         const page = activePages[i];
@@ -168,30 +164,13 @@ export default function App() {
         });
 
         const imgData = canvas.toDataURL('image/png');
-        
-        // --- 📏 비율 자동 계산 로직 (절대 잘리지 않게 축소) ---
-        const imgProps = pdf.getImageProperties(imgData);
-        const imgRatio = imgProps.width / imgProps.height;
-        const pageRatio = maxImgWidth / maxImgHeight;
-
-        let finalWidth, finalHeight;
-
-        // 이미지가 페이지보다 납작하면 -> 너비 기준 맞춤
-        if (imgRatio > pageRatio) {
-          finalWidth = maxImgWidth;
-          finalHeight = finalWidth / imgRatio;
-        } else {
-          // 이미지가 페이지보다 길쭉하면 -> 높이 기준 맞춤 (이게 작동해서 잘림 방지됨)
-          finalHeight = maxImgHeight;
-          finalWidth = finalHeight * imgRatio;
-        }
-
-        // 중앙 정렬 좌표 계산
-        const x = (pdfWidth - finalWidth) / 2;
-        const y = (pdfHeight - finalHeight) / 2;
 
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+        
+        // 🚨 비율 계산 제거! 
+        // 0, 0 좌표에서 시작해서 210x297 크기로 무조건 꽉 채웁니다.
+        // 이렇게 하면 잘릴 수가 없습니다. (대신 약간 눌려 보일 수 있음)
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
       
       pdf.save(`${doc.type}_${doc.docNo}.pdf`);
