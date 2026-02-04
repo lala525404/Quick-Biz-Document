@@ -52,9 +52,11 @@ const INITIAL_STATE: DocumentState = {
   stampSize: 60
 };
 
-// 🚨 사용자님 요청 반영: 첫 페이지 10개로 고정 (절대 안 잘림)
-const ITEMS_PER_FIRST_PAGE = 10; 
-const ITEMS_PER_SUBSEQUENT_PAGE = 20; // 두 번째 페이지도 여유 있게 20개
+// 🚨 사용자님 요청 반영: 황금 비율 설정
+// 1페이지: 16개 (여백 없이 꽉 참)
+// 2페이지~: 20개 (잘리지 않고 안전함)
+const ITEMS_PER_FIRST_PAGE = 16; 
+const ITEMS_PER_SUBSEQUENT_PAGE = 20;
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
@@ -146,6 +148,7 @@ export default function App() {
     try {
       await document.fonts.ready;
       
+      // A4 사이즈 강제 고정 (210mm x 297mm)
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = 210; 
       const pdfHeight = 297; 
@@ -154,6 +157,7 @@ export default function App() {
         const page = activePages[i];
         if (!page) continue;
 
+        // 화면에 보이는 그대로 고화질 캡처
         const canvas = await html2canvas(page, {
           scale: 2, 
           useCORS: true,
@@ -167,7 +171,7 @@ export default function App() {
         
         if (i > 0) pdf.addPage();
         
-        // A4 1:1 출력 (찌그러짐/잘림 없이 그대로)
+        // PDF에 1:1 사이즈로 삽입 (찌그러짐/잘림 없음)
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
       
