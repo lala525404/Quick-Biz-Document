@@ -52,9 +52,9 @@ const INITIAL_STATE: DocumentState = {
   stampSize: 60
 };
 
-// 페이지당 품목 수 조절 (여유있게 들어오도록)
-const ITEMS_PER_FIRST_PAGE = 12; 
-const ITEMS_PER_SUBSEQUENT_PAGE = 25;
+// 🚨 A4 용지 안에 안전하게 들어가도록 개수 조정 (욕심부리면 넘칩니다)
+const ITEMS_PER_FIRST_PAGE = 10; 
+const ITEMS_PER_SUBSEQUENT_PAGE = 20;
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
@@ -147,14 +147,13 @@ export default function App() {
       await document.fonts.ready;
       
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210; 
-      const pdfHeight = 297; 
+      const pdfWidth = 210; // A4 가로 210mm
 
       for (let i = 0; i < activePages.length; i++) {
         const page = activePages[i];
         if (!page) continue;
 
-        // 고화질 캡처
+        // 1. 고화질 캡처 (스케일 2배)
         const canvas = await html2canvas(page, {
           scale: 2, 
           useCORS: true,
@@ -166,10 +165,15 @@ export default function App() {
 
         const imgData = canvas.toDataURL('image/png');
         
-        // 페이지 추가
+        // 2. 비율 계산 (찌그러짐 방지 핵심)
+        // 이미지의 실제 가로/세로 비율을 계산해서 PDF 높이를 결정합니다.
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        // 3. 페이지 추가
         if (i > 0) pdf.addPage();
         
-        // A4 크기에 꽉 차게 (이미 내용을 A4 비율로 맞췄으므로 왜곡 없음)
+        // 4. 계산된 비율대로 이미지 삽입 (이제 찌그러지지 않습니다!)
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
       
@@ -200,9 +204,7 @@ export default function App() {
   const { subTotal, vat, total } = calculateTotals(doc.items, doc.taxOption);
   const inputBaseClass = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black font-medium block transition-shadow";
   const itemInputClass = "w-full bg-white border-b border-gray-300 text-sm py-1 px-1 focus:border-blue-500 outline-none text-black font-medium";
-  // 라벨 셀 스타일: 여백을 좀 줄임 (py-2 -> py-1.5)
   const labelCellClass = "border border-gray-900 bg-gray-50 px-2 py-1.5 text-center font-bold text-gray-800 align-middle whitespace-nowrap text-xs";
-  // 값 셀 스타일: 여백을 좀 줄임 (py-2 -> py-1.5)
   const valueCellClass = "border border-gray-900 px-3 py-1.5 text-gray-900 font-medium align-middle text-sm break-all leading-tight";
 
   const getPageChunks = () => {
@@ -222,7 +224,6 @@ export default function App() {
   if (showIntro) {
     return (
       <div ref={introScrollRef} className="h-screen bg-white flex flex-col scroll-smooth overflow-y-auto overflow-x-hidden relative">
-        {/* 네비게이션 및 인트로 섹션은 그대로 유지 */}
         <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-100 px-6 py-4 shadow-sm">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <div className="flex items-center gap-2 font-black text-2xl text-blue-600 tracking-tighter cursor-pointer" onClick={() => introScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -347,8 +348,110 @@ export default function App() {
           </div>
         </section>
 
-        {/* ... (나머지 섹션들은 그대로 유지) ... */}
-        
+        <section id="knowledge" className="py-24 px-6 bg-slate-900 text-white relative">
+          <div className="absolute top-0 right-0 w-1/3 h-full bg-blue-600/5 -skew-x-12 pointer-events-none"></div>
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="grid lg:grid-cols-2 gap-16 items-start">
+              <div className="space-y-10">
+                <div className="space-y-4">
+                  <span className="bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest border border-blue-500/30">Business Intelligence</span>
+                  <h2 className="text-2xl md:text-4xl font-black leading-tight tracking-tight">전문적인 비즈니스<br/><span className="text-blue-400">문서 작성 상식</span></h2>
+                  <p className="text-slate-400 text-base leading-relaxed font-bold">
+                    신뢰받는 파트너가 되기 위한<br/>서류 작성 노하우를 확인하세요.
+                  </p>
+                </div>
+                 
+                <div className="space-y-7">
+                  {[
+                    { icon: <Scale />, title: "견적서의 효력", desc: "견적서는 계약 체결 전의 청약 유인입니다. 상대방이 승낙하고 서명할 경우 계약서와 동일한 효력을 가질 수 있으니 신중히 작성하세요." },
+                    { icon: <History />, title: "증빙 보관 규정", desc: "국세청은 거래 증빙 서류를 5년간 보관할 것을 권장합니다. QuickBiz Pro에서 발행한 PDF를 클라우드에 안전하게 백업해두세요." },
+                    { icon: <Settings />, title: "부가세 신고 기초", desc: "일반과세자는 10% 부가세를 별도 표시하며, 간이과세자는 합계 금액 위주로 작성합니다. 본인의 사업자 유형을 확인하세요." }
+                  ].map((tip, i) => (
+                    <div key={i} className="flex gap-5 items-start group">
+                      <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all duration-500">
+                        {React.cloneElement(tip.icon as React.ReactElement, { size: 24 })}
+                      </div>
+                      <div className="space-y-1.5">
+                        <h4 className="text-lg font-black text-white">{tip.title}</h4>
+                        <p className="text-slate-400 text-xs leading-relaxed font-bold break-keep">{tip.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-2xl p-8 md:p-10 rounded-[40px] border border-white/10 space-y-8 shadow-2xl mb-10 lg:mb-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-xl">
+                    <BookOpen size={20} />
+                  </div>
+                  <h3 className="text-xl font-black">비즈니스 용어 가이드</h3>
+                </div>
+                <div className="grid gap-6">
+                  {[
+                    { t: "공급가액 vs 합계금액", d: "공급가액은 물건값 자체이며, 합계금액은 여기에 부가세 10%를 더한 최종 결제액입니다." },
+                    { t: "단가 (Unit Price)", d: "물품 한 단위당 가격입니다. 수량을 곱해 자동으로 행별 소계가 산출됩니다." },
+                    { t: "원정 (元正)", d: "금액 변조 방지를 위해 숫자 뒤에 붙이는 한자어입니다. '오직 이 금액뿐이다'라는 의미입니다." },
+                    { t: "특약사항 (Remark)", d: "납기나 AS 조건 등 예외 사항을 기재하는 영역으로 분쟁 예방에 핵심적인 역할을 합니다." }
+                  ].map((word, i) => (
+                    <div key={i} className="space-y-1.5 group">
+                      <span className="text-blue-400 font-black text-base block group-hover:text-blue-200 transition-colors tracking-tight">{word.t}</span>
+                      <p className="text-slate-400 text-xs font-bold leading-relaxed break-keep">{word.d}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" className="py-24 px-6 bg-white">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-16 space-y-3">
+              <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">자주 묻는 질문</h2>
+              <p className="text-slate-500 text-base font-bold">QuickBiz Pro 이용에 대해 궁금하신 점을 해결해 드립니다.</p>
+            </div>
+            <div className="space-y-3.5">
+              {[
+                { q: "회원가입이 왜 필요 없나요?", a: "QuickBiz Pro의 철학은 즉각적인 업무 지원입니다. 번거로운 절차 없이 바로 이용할 수 있도록 했으며, 모든 데이터는 브라우저 캐시에만 안전하게 유지됩니다." },
+                { q: "도장 배경을 지울 수 있나요?", a: "네, 입력 폼 하단의 도장 배경 제거 배너를 클릭하시면 AI 도구로 연결됩니다. 배경이 없는 투명 PNG를 사용하시면 훨씬 깔끔하게 발급됩니다." },
+                { q: "발행 문서의 법적 효력은?", a: "대한민국 표준 양식을 따르고 있어 민간 거래 증빙용으로 충분히 활용 가능합니다. 다만 정식 세금계산서는 홈택스를 이용하셔야 합니다." }
+              ].map((item, i) => (
+                <details key={i} className="group bg-slate-50 rounded-[24px] p-6 border border-slate-100 cursor-pointer hover:bg-white hover:shadow-lg transition-all duration-300">
+                  <summary className="font-black text-base flex justify-between items-center list-none text-slate-900 tracking-tight">
+                    {item.q}
+                    <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center text-slate-400 group-open:rotate-180 transition-transform shadow-sm">
+                      <Plus size={14} />
+                    </div>
+                  </summary>
+                  <p className="mt-5 text-slate-600 leading-relaxed font-bold border-t border-slate-200 pt-5 text-sm break-keep">
+                    {item.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="py-24 px-6">
+          <div className="max-w-5xl mx-auto bg-blue-600 rounded-[56px] p-12 md:p-20 text-center space-y-8 relative overflow-hidden shadow-2xl shadow-blue-200">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.25),transparent)]"></div>
+            <div className="relative z-10 space-y-4">
+              <h2 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tighter">비즈니스의 품격을<br/>지금 바로 높여보세요.</h2>
+              <p className="text-blue-100 text-base md:text-lg font-bold opacity-90">100% 무료 발급 • 무제한 사용 • 보안 보장</p>
+            </div>
+            <div className="relative z-10 flex justify-center pt-2">
+              <button 
+                onClick={() => setShowIntro(false)}
+                className="group bg-white text-blue-600 px-10 py-5 rounded-[24px] text-xl font-black shadow-2xl hover:scale-105 transition-all active:scale-95 flex items-center gap-3"
+              >
+                무료 시작하기
+                <ArrowRight size={24} className="group-hover:translate-x-1.5 transition-transform" />
+              </button>
+            </div>
+          </div>
+        </section>
+
         <footer className="bg-slate-50 text-slate-500 py-24 px-6 border-t border-slate-200">
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-4 gap-16">
             <div className="col-span-2 space-y-8">
@@ -591,9 +694,15 @@ export default function App() {
           <div 
             key={pageIndex}
             ref={el => { pagesRef.current[pageIndex] = el; }}
-            className="bg-white shadow-2xl relative overflow-hidden shrink-0" 
-            // 🚨 수정: 패딩을 15mm -> 10mm로 줄여서 공간 확보
-            style={{ width: '210mm', minHeight: '297mm', padding: '10mm', boxSizing: 'border-box' }}
+            className="bg-white shadow-2xl relative shrink-0" 
+            // 🚨 수정: 프리뷰 크기를 A4로 완벽하게 고정하고 넘치는 건 숨김 (WYSIWYG)
+            style={{ 
+              width: '210mm', 
+              height: '297mm', 
+              padding: '10mm', 
+              boxSizing: 'border-box',
+              overflow: 'hidden' // 넘치면 잘라버려서 화면에서도 보이게 함
+            }}
           >
             {pageIndex === 0 && doc.stampUrl && (
               <div 
@@ -614,30 +723,32 @@ export default function App() {
 
             {pageIndex === 0 ? (
               <>
-                {/* 타이틀 마진 축소 (mb-12 -> mb-8) */}
-                <div className="relative mb-8 flex justify-center pt-4">
-                  <h1 className="text-3xl font-black tracking-[0.5em] text-gray-900 border-b-4 border-double border-gray-900 px-12 pb-6">
+                {/* 타이틀 마진 축소 (mb-8 -> mb-6) */}
+                <div className="relative mb-6 flex justify-center pt-2">
+                  <h1 className="text-3xl font-black tracking-[0.5em] text-gray-900 border-b-4 border-double border-gray-900 px-12 pb-4">
                     {doc.type === DocumentType.ESTIMATE ? '견 적 서' : doc.type === DocumentType.TRANSACTION_STATEMENT ? '거래명세서' : '영 수 증'}
                   </h1>
                 </div>
-                <div className="flex gap-6 mb-8 items-stretch">
-                  <div className="flex-1 flex flex-col gap-6">
+                {/* 섹션 간격 축소 (gap-6 -> gap-4, mb-8 -> mb-6) */}
+                <div className="flex gap-4 mb-6 items-stretch">
+                  <div className="flex-1 flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                      <div className="flex border-b border-gray-400 pb-2 px-1 items-center justify-between">
+                      <div className="flex border-b border-gray-400 pb-1 px-1 items-center justify-between">
                           <span className="text-sm font-bold text-gray-600">작성일자</span>
                           <span className="text-base text-gray-900 font-bold">{doc.date}</span>
                       </div>
-                      <div className="flex border-b border-gray-400 pb-2 px-1 items-center justify-between">
+                      <div className="flex border-b border-gray-400 pb-1 px-1 items-center justify-between">
                           <span className="text-sm font-bold text-gray-600">문서번호</span>
                           <span className="text-base text-gray-900 font-bold">{doc.docNo}</span>
                       </div>
                     </div>
-                    <div className="border-2 border-gray-900 p-6 flex-1 flex flex-col justify-center bg-white rounded-sm">
-                      <div className="text-2xl mb-4 text-gray-900 flex items-baseline gap-2 border-b-2 border-gray-300 pb-4">
+                    {/* 공급받는자 박스 패딩 축소 (p-6 -> p-4) */}
+                    <div className="border-2 border-gray-900 p-4 flex-1 flex flex-col justify-center bg-white rounded-sm">
+                      <div className="text-2xl mb-2 text-gray-900 flex items-baseline gap-2 border-b-2 border-gray-300 pb-2">
                           <span className="font-black text-3xl">{doc.client.name || '(거래처명)'}</span>
                           <span className="text-xl font-bold text-gray-600">귀하</span>
                       </div>
-                      <div className="text-base text-gray-600 font-medium leading-relaxed">
+                      <div className="text-sm text-gray-600 font-medium leading-relaxed">
                           아래와 같이 {doc.type === DocumentType.ESTIMATE ? '견적' : '거래'} 내용을 확인합니다.<br/>
                           항상 저희 서비스를 이용해 주셔서 감사합니다.
                       </div>
@@ -680,7 +791,8 @@ export default function App() {
                     </table>
                   </div>
                 </div>
-                <div className="border-t-2 border-b-2 border-gray-900 mb-8 py-4 px-6 flex justify-between items-center bg-gray-50">
+                {/* 합계란 마진 축소 (mb-8 -> mb-6) */}
+                <div className="border-t-2 border-b-2 border-gray-900 mb-6 py-3 px-6 flex justify-between items-center bg-gray-50">
                   <span className="font-bold text-xl text-gray-800">합계금액</span>
                   <div className="text-right flex items-baseline gap-4">
                       <span className="text-base font-bold text-gray-600">({numberToKorean(total)})</span>
@@ -696,9 +808,10 @@ export default function App() {
               </div>
             )}
 
-            <table className="w-full border-collapse border border-gray-900 text-sm mb-12">
+            <table className="w-full border-collapse border border-gray-900 text-sm mb-8">
               <thead>
-                  <tr className="bg-gray-100 text-gray-800 font-bold h-10"> {/* h-12 -> h-10 줄임 */}
+                  {/* 헤더 높이 축소 (h-10 -> h-8) */}
+                  <tr className="bg-gray-100 text-gray-800 font-bold h-8">
                       <th className="border border-gray-900 px-2 w-12 text-center align-middle">NO</th>
                       <th className="border border-gray-900 px-4 text-center align-middle">품목명</th>
                       <th className="border border-gray-900 px-2 w-20 text-center align-middle">규격</th>
@@ -713,8 +826,8 @@ export default function App() {
                     ? idx + 1 
                     : ITEMS_PER_FIRST_PAGE + (pageIndex - 1) * ITEMS_PER_SUBSEQUENT_PAGE + idx + 1;
                   return (
-                    // h-12 -> h-10 줄임 (여기가 핵심)
-                    <tr key={item.id} className="h-10 text-gray-900 hover:bg-gray-50">
+                    // 행 높이 축소 (h-10 -> h-9)
+                    <tr key={item.id} className="h-9 text-gray-900 hover:bg-gray-50">
                       <td className="border border-gray-900 px-2 text-center font-bold align-middle text-gray-600">{globalIdx}</td>
                       <td className="border border-gray-900 px-4 font-medium align-middle text-left">{item.name}</td>
                       <td className="border border-gray-900 px-2 text-center align-middle text-gray-600">{item.spec}</td>
@@ -727,7 +840,7 @@ export default function App() {
                 {Array.from({ 
                   length: Math.max(0, (pageIndex === 0 ? ITEMS_PER_FIRST_PAGE : ITEMS_PER_SUBSEQUENT_PAGE) - chunk.length) 
                 }).map((_, i) => (
-                    <tr key={`filler-${i}`} className="h-10"> {/* filler 행도 줄임 */}
+                    <tr key={`filler-${i}`} className="h-9">
                       <td className="border border-gray-900 px-2"></td>
                       <td className="border border-gray-900 px-4"></td>
                       <td className="border border-gray-900 px-2"></td>
@@ -739,15 +852,15 @@ export default function App() {
               </tbody>
               {pageIndex === pageChunks.length - 1 && (
                 <tfoot>
-                  <tr className="bg-gray-50 h-10 font-bold text-gray-800">
+                  <tr className="bg-gray-50 h-9 font-bold text-gray-800">
                       <td colSpan={3} className="border border-gray-900 px-4 text-center align-middle">소 계</td>
                       <td colSpan={3} className="border border-gray-900 px-4 text-right align-middle">{formatNumber(subTotal)}</td>
                   </tr>
-                  <tr className="bg-gray-50 h-10 font-bold text-gray-800">
+                  <tr className="bg-gray-50 h-9 font-bold text-gray-800">
                       <td colSpan={3} className="border border-gray-900 px-4 text-center align-middle">부 가 세 (10%)</td>
                       <td colSpan={3} className="border border-gray-900 px-4 text-right align-middle">{formatNumber(vat)}</td>
                   </tr>
-                  <tr className="bg-gray-100 h-14 text-gray-900 font-black border-t-2 border-gray-900">
+                  <tr className="bg-gray-100 h-12 text-gray-900 font-black border-t-2 border-gray-900">
                       <td colSpan={3} className="border border-gray-900 px-4 text-center align-middle text-lg">합 계 (TOTAL)</td>
                       <td colSpan={3} className="border border-gray-900 px-4 text-right align-middle text-2xl">₩ {formatNumber(total)}</td>
                   </tr>
@@ -755,9 +868,9 @@ export default function App() {
               )}
             </table>
             {pageIndex === pageChunks.length - 1 && (
-              <div className="border border-gray-300 p-6 text-sm text-gray-600 leading-relaxed bg-gray-50 rounded shadow-sm">
-                <span className="font-bold text-gray-800 block mb-2 text-base">[참고사항]</span>
-                <ul className="list-disc pl-5 space-y-1">
+              <div className="border border-gray-300 p-4 text-xs text-gray-600 leading-relaxed bg-gray-50 rounded shadow-sm">
+                <span className="font-bold text-gray-800 block mb-1 text-sm">[참고사항]</span>
+                <ul className="list-disc pl-5 space-y-0.5">
                     <li>본 문서는 법적 효력을 보장하지 않으며 거래 증빙용으로 활용하십시오.</li>
                     <li>위 금액에는 부가가치세가 {doc.taxOption === TaxOption.VAT_INCLUDED ? '포함되어 있습니다.' : '별도로 부과됩니다.'}</li>
                     <li>입금계좌: __________________________________________________________________</li>
