@@ -52,9 +52,9 @@ const INITIAL_STATE: DocumentState = {
   stampSize: 60
 };
 
-// 🚨 황금 비율 수정: 1페이지는 늘리고(16), 뒷페이지는 줄여서(20) 여백 확보
-const ITEMS_PER_FIRST_PAGE = 16; 
-const ITEMS_PER_SUBSEQUENT_PAGE = 20;
+// 🚨 사용자님 요청 반영: 첫 페이지 10개로 고정 (절대 안 잘림)
+const ITEMS_PER_FIRST_PAGE = 10; 
+const ITEMS_PER_SUBSEQUENT_PAGE = 20; // 두 번째 페이지도 여유 있게 20개
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
@@ -154,7 +154,6 @@ export default function App() {
         const page = activePages[i];
         if (!page) continue;
 
-        // 고화질 캡처
         const canvas = await html2canvas(page, {
           scale: 2, 
           useCORS: true,
@@ -168,7 +167,7 @@ export default function App() {
         
         if (i > 0) pdf.addPage();
         
-        // A4 1:1 출력 (찌그러짐 방지)
+        // A4 1:1 출력 (찌그러짐/잘림 없이 그대로)
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
       
