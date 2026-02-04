@@ -25,6 +25,7 @@ import { jsPDF } from 'jspdf';
 import { DocumentType, TaxOption, DocumentState, Item } from './types';
 import { formatNumber, numberToKorean, calculateTotals, formatPhoneNumber, formatBizNo } from './utils';
 
+// State 타입 정의
 const INITIAL_STATE: DocumentState & { bankAccount: string } = {
   type: DocumentType.ESTIMATE,
   docNo: `DOC-${new Date().getTime().toString().slice(-6)}`,
@@ -194,59 +195,74 @@ export default function App() {
   const { subTotal, vat, total } = calculateTotals(doc.items, doc.taxOption);
   const inputBaseClass = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black font-medium block transition-shadow";
   const itemInputClass = "w-full bg-white border-b border-gray-300 text-sm py-1 px-1 focus:border-blue-500 outline-none text-black font-medium";
-  
-  // 🚨 정렬 수정: align-middle과 padding-y를 제거하거나 최소화하여 높이 중앙 정렬 유도
   const labelCellClass = "border border-gray-900 bg-gray-50 px-2 py-1 text-center font-bold text-gray-800 align-middle whitespace-nowrap text-xs";
   const valueCellClass = "border border-gray-900 px-3 py-1 text-gray-900 font-medium align-middle text-sm break-all leading-tight";
 
-  // 🧠 사용자 요청대로 복잡한 페이지 분할 로직 구현
+  // 🧠 [최종] 페이지 분할 로직 (사용자 요청 완벽 준수)
   const getPageChunks = () => {
     const items = doc.items;
     const totalCount = items.length;
-    const chunks: { items: Item[], limit: number, startIndex: number }[] = [];
+    const chunks: { items: Item[], limit: number, startIndex: number, isLast: boolean }[] = [];
 
-    // 1. 전체가 10개 이하라면 -> 1페이지에 10칸으로 끝
+    // --- [1장 규칙] 10개 이하면 1장으로 끝 (10칸) ---
     if (totalCount <= 10) {
-      chunks.push({ 
-        items: items, 
-        limit: 10,
-        startIndex: 0 
-      });
+      chunks.push({ items: items, limit: 10, startIndex: 0, isLast: true });
       return chunks;
     }
 
-    // 2. 2페이지 이상 넘어가는 경우
+    // --- [2장 이상 규칙] ---
     let currentIdx = 0;
 
-    // --- 첫 번째 페이지: 이어지는 내용이 있으므로 16칸 ---
+    // 1. 첫 번째 장: 무조건 16칸
     chunks.push({
       items: items.slice(0, 16),
       limit: 16,
-      startIndex: 0
+      startIndex: 0,
+      isLast: false
     });
     currentIdx += 16;
 
-    // --- 두 번째 페이지부터 루프 ---
+    // 2. 나머지 장 루프
     while (currentIdx < totalCount) {
       const remaining = totalCount - currentIdx;
       
-      // 만약 이번이 마지막 페이지가 된다면 (남은 게 20개 이하) -> 20칸
+      // 핵심: 남은 게 20개 이하면 "마지막 장(20칸)"에 쏙 들어감
       if (remaining <= 20) {
         chunks.push({
           items: items.slice(currentIdx),
           limit: 20,
-          startIndex: currentIdx
+          startIndex: currentIdx,
+          isLast: true // 🚩 여기서 끝냄
         });
-        break; // 루프 종료
-      } else {
-        // 아직도 내용이 많아서 더 넘겨야 한다면 (중간 페이지) -> 26칸 (꽉 채움)
+        break;
+      } 
+      // 핵심: 남은 게 20개보다 많으면 "중간 장(24칸)"으로 꽉 채움 (26칸 -> 24칸으로 수정됨)
+      else {
         chunks.push({
-          items: items.slice(currentIdx, currentIdx + 26),
-          limit: 26,
-          startIndex: currentIdx
+          items: items.slice(currentIdx, currentIdx + 24),
+          limit: 24, // 26 -> 24 수정 완료
+          startIndex: currentIdx,
+          isLast: false // 아직 안 끝남
         });
-        currentIdx += 26;
+        currentIdx += 24;
       }
+    }
+    
+    // 🔥 [과감한 넘기기] 
+    // 만약 위 루프가 끝났는데, 마지막 청크가 '중간 장' 처리되었다면 (즉, items가 딱 맞게 24개로 떨어져서 isLast가 안 된 경우 등)
+    // 혹은 마지막에 남은게 애매하게 21개라 중간장(24)에 21개를 넣고, footer 넣을 공간이 없는 경우를 대비.
+    // 위 로직(remaining > 20)에서 이미 21개면 24칸짜리 중간장을 만들어버림.
+    // 그러면 그 다음엔 remaining이 0이 됨.
+    
+    // 만약 마지막으로 추가된 페이지가 '중간 장(isLast: false)'이라면, 
+    // 빈 페이지(Last Page)를 하나 더 추가해서 Footer를 안전하게 표시한다.
+    if (chunks.length > 0 && !chunks[chunks.length - 1].isLast) {
+       chunks.push({
+         items: [], // 아이템 없음
+         limit: 20, // 마지막 장 규격 (20칸)
+         startIndex: totalCount,
+         isLast: true
+       });
     }
 
     return chunks;
@@ -860,8 +876,8 @@ export default function App() {
                 {chunk.items.map((item, idx) => {
                   const globalIdx = chunk.startIndex + idx + 1;
                   return (
+                    // 🚨 정렬 수정: h-9로 고정하고 align-middle 적용
                     <tr key={item.id} className="h-9 text-gray-900 hover:bg-gray-50">
-                      {/* 👇 align-middle 확실히 적용 */}
                       <td className="border border-gray-900 px-1 text-center font-bold align-middle text-gray-600">{globalIdx}</td>
                       <td className="border border-gray-900 px-2 font-medium align-middle text-left">{item.name}</td>
                       <td className="border border-gray-900 px-1 text-center align-middle text-gray-600">{item.spec}</td>
@@ -871,7 +887,8 @@ export default function App() {
                     </tr>
                   );
                 })}
-                {Array.from({ length: Math.max(0, chunk.limit - chunk.items.length) }).map((_, i) => (
+                {/* 마지막 페이지가 아니면 빈 칸 채움 (마지막 페이지는 여기서 끝!) */}
+                {!chunk.isLast && Array.from({ length: Math.max(0, chunk.limit - chunk.items.length) }).map((_, i) => (
                     <tr key={`filler-${i}`} className="h-9">
                       <td className="border border-gray-900 px-1"></td>
                       <td className="border border-gray-900 px-2"></td>
