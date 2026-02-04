@@ -52,9 +52,9 @@ const INITIAL_STATE: DocumentState = {
   stampSize: 60
 };
 
-// 🚨 A4 용지 안에 쏙 들어가도록 품목 개수 조정
-const ITEMS_PER_FIRST_PAGE = 13; 
-const ITEMS_PER_SUBSEQUENT_PAGE = 24;
+// 🚨 황금 비율 수정: 1페이지는 늘리고(16), 뒷페이지는 줄여서(20) 여백 확보
+const ITEMS_PER_FIRST_PAGE = 16; 
+const ITEMS_PER_SUBSEQUENT_PAGE = 20;
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
@@ -146,7 +146,6 @@ export default function App() {
     try {
       await document.fonts.ready;
       
-      // A4 크기 (mm)
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = 210; 
       const pdfHeight = 297; 
@@ -155,21 +154,21 @@ export default function App() {
         const page = activePages[i];
         if (!page) continue;
 
-        // 1. A4 크기로 정확하게 캡처 (스케일 2배로 선명하게)
+        // 고화질 캡처
         const canvas = await html2canvas(page, {
           scale: 2, 
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
-          width: page.offsetWidth, // 화면에 보이는 너비 그대로
-          height: page.offsetHeight // 화면에 보이는 높이 그대로
+          width: page.offsetWidth, 
+          height: page.offsetHeight
         });
 
         const imgData = canvas.toDataURL('image/png');
         
         if (i > 0) pdf.addPage();
         
-        // 2. 1:1 매핑 (왜곡 없이 그대로 갖다 붙임)
+        // A4 1:1 출력 (찌그러짐 방지)
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
       
@@ -198,12 +197,10 @@ export default function App() {
   };
 
   const { subTotal, vat, total } = calculateTotals(doc.items, doc.taxOption);
-  
-  // 스타일 정의 (전체적으로 폰트와 여백을 줄임)
   const inputBaseClass = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black font-medium block transition-shadow";
   const itemInputClass = "w-full bg-white border-b border-gray-300 text-sm py-1 px-1 focus:border-blue-500 outline-none text-black font-medium";
-  const labelCellClass = "border border-gray-900 bg-gray-50 px-1 py-1 text-center font-bold text-gray-800 align-middle whitespace-nowrap text-[11px]"; // 폰트 축소
-  const valueCellClass = "border border-gray-900 px-2 py-1 text-gray-900 font-medium align-middle text-xs break-all leading-tight"; // 폰트 축소
+  const labelCellClass = "border border-gray-900 bg-gray-50 px-2 py-1.5 text-center font-bold text-gray-800 align-middle whitespace-nowrap text-xs";
+  const valueCellClass = "border border-gray-900 px-3 py-1.5 text-gray-900 font-medium align-middle text-sm break-all leading-tight";
 
   const getPageChunks = () => {
     const chunks: Item[][] = [];
@@ -346,8 +343,110 @@ export default function App() {
           </div>
         </section>
 
-        {/* ... (나머지 섹션들 그대로) ... */}
-        
+        <section id="knowledge" className="py-24 px-6 bg-slate-900 text-white relative">
+          <div className="absolute top-0 right-0 w-1/3 h-full bg-blue-600/5 -skew-x-12 pointer-events-none"></div>
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="grid lg:grid-cols-2 gap-16 items-start">
+              <div className="space-y-10">
+                <div className="space-y-4">
+                  <span className="bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest border border-blue-500/30">Business Intelligence</span>
+                  <h2 className="text-2xl md:text-4xl font-black leading-tight tracking-tight">전문적인 비즈니스<br/><span className="text-blue-400">문서 작성 상식</span></h2>
+                  <p className="text-slate-400 text-base leading-relaxed font-bold">
+                    신뢰받는 파트너가 되기 위한<br/>서류 작성 노하우를 확인하세요.
+                  </p>
+                </div>
+                 
+                <div className="space-y-7">
+                  {[
+                    { icon: <Scale />, title: "견적서의 효력", desc: "견적서는 계약 체결 전의 청약 유인입니다. 상대방이 승낙하고 서명할 경우 계약서와 동일한 효력을 가질 수 있으니 신중히 작성하세요." },
+                    { icon: <History />, title: "증빙 보관 규정", desc: "국세청은 거래 증빙 서류를 5년간 보관할 것을 권장합니다. QuickBiz Pro에서 발행한 PDF를 클라우드에 안전하게 백업해두세요." },
+                    { icon: <Settings />, title: "부가세 신고 기초", desc: "일반과세자는 10% 부가세를 별도 표시하며, 간이과세자는 합계 금액 위주로 작성합니다. 본인의 사업자 유형을 확인하세요." }
+                  ].map((tip, i) => (
+                    <div key={i} className="flex gap-5 items-start group">
+                      <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all duration-500">
+                        {React.cloneElement(tip.icon as React.ReactElement, { size: 24 })}
+                      </div>
+                      <div className="space-y-1.5">
+                        <h4 className="text-lg font-black text-white">{tip.title}</h4>
+                        <p className="text-slate-400 text-xs leading-relaxed font-bold break-keep">{tip.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-2xl p-8 md:p-10 rounded-[40px] border border-white/10 space-y-8 shadow-2xl mb-10 lg:mb-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-xl">
+                    <BookOpen size={20} />
+                  </div>
+                  <h3 className="text-xl font-black">비즈니스 용어 가이드</h3>
+                </div>
+                <div className="grid gap-6">
+                  {[
+                    { t: "공급가액 vs 합계금액", d: "공급가액은 물건값 자체이며, 합계금액은 여기에 부가세 10%를 더한 최종 결제액입니다." },
+                    { t: "단가 (Unit Price)", d: "물품 한 단위당 가격입니다. 수량을 곱해 자동으로 행별 소계가 산출됩니다." },
+                    { t: "원정 (元正)", d: "금액 변조 방지를 위해 숫자 뒤에 붙이는 한자어입니다. '오직 이 금액뿐이다'라는 의미입니다." },
+                    { t: "특약사항 (Remark)", d: "납기나 AS 조건 등 예외 사항을 기재하는 영역으로 분쟁 예방에 핵심적인 역할을 합니다." }
+                  ].map((word, i) => (
+                    <div key={i} className="space-y-1.5 group">
+                      <span className="text-blue-400 font-black text-base block group-hover:text-blue-200 transition-colors tracking-tight">{word.t}</span>
+                      <p className="text-slate-400 text-xs font-bold leading-relaxed break-keep">{word.d}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" className="py-24 px-6 bg-white">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-16 space-y-3">
+              <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">자주 묻는 질문</h2>
+              <p className="text-slate-500 text-base font-bold">QuickBiz Pro 이용에 대해 궁금하신 점을 해결해 드립니다.</p>
+            </div>
+            <div className="space-y-3.5">
+              {[
+                { q: "회원가입이 왜 필요 없나요?", a: "QuickBiz Pro의 철학은 즉각적인 업무 지원입니다. 번거로운 절차 없이 바로 이용할 수 있도록 했으며, 모든 데이터는 브라우저 캐시에만 안전하게 유지됩니다." },
+                { q: "도장 배경을 지울 수 있나요?", a: "네, 입력 폼 하단의 도장 배경 제거 배너를 클릭하시면 AI 도구로 연결됩니다. 배경이 없는 투명 PNG를 사용하시면 훨씬 깔끔하게 발급됩니다." },
+                { q: "발행 문서의 법적 효력은?", a: "대한민국 표준 양식을 따르고 있어 민간 거래 증빙용으로 충분히 활용 가능합니다. 다만 정식 세금계산서는 홈택스를 이용하셔야 합니다." }
+              ].map((item, i) => (
+                <details key={i} className="group bg-slate-50 rounded-[24px] p-6 border border-slate-100 cursor-pointer hover:bg-white hover:shadow-lg transition-all duration-300">
+                  <summary className="font-black text-base flex justify-between items-center list-none text-slate-900 tracking-tight">
+                    {item.q}
+                    <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center text-slate-400 group-open:rotate-180 transition-transform shadow-sm">
+                      <Plus size={14} />
+                    </div>
+                  </summary>
+                  <p className="mt-5 text-slate-600 leading-relaxed font-bold border-t border-slate-200 pt-5 text-sm break-keep">
+                    {item.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="py-24 px-6">
+          <div className="max-w-5xl mx-auto bg-blue-600 rounded-[56px] p-12 md:p-20 text-center space-y-8 relative overflow-hidden shadow-2xl shadow-blue-200">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.25),transparent)]"></div>
+            <div className="relative z-10 space-y-4">
+              <h2 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tighter">비즈니스의 품격을<br/>지금 바로 높여보세요.</h2>
+              <p className="text-blue-100 text-base md:text-lg font-bold opacity-90">100% 무료 발급 • 무제한 사용 • 보안 보장</p>
+            </div>
+            <div className="relative z-10 flex justify-center pt-2">
+              <button 
+                onClick={() => setShowIntro(false)}
+                className="group bg-white text-blue-600 px-10 py-5 rounded-[24px] text-xl font-black shadow-2xl hover:scale-105 transition-all active:scale-95 flex items-center gap-3"
+              >
+                무료 시작하기
+                <ArrowRight size={24} className="group-hover:translate-x-1.5 transition-transform" />
+              </button>
+            </div>
+          </div>
+        </section>
+
         <footer className="bg-slate-50 text-slate-500 py-24 px-6 border-t border-slate-200">
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-4 gap-16">
             <div className="col-span-2 space-y-8">
@@ -662,7 +761,7 @@ export default function App() {
                           <td className={labelCellClass}>상 호</td>
                           <td className={valueCellClass}>{doc.supplier.name || ''}</td>
                           <td className={labelCellClass}>성 명</td>
-                          <td className="border border-gray-900 px-3 py-1 relative text-gray-900 font-medium align-middle text-xs">
+                          <td className="border border-gray-900 px-3 py-1.5 relative text-gray-900 font-medium align-middle text-xs">
                             <div className="flex justify-between items-center w-full z-0">
                               <span>{doc.supplier.owner || ''}</span>
                               <span className="text-gray-400 font-bold text-[10px]">(인)</span>
