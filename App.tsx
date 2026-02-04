@@ -25,7 +25,7 @@ import { jsPDF } from 'jspdf';
 import { DocumentType, TaxOption, DocumentState, Item } from './types';
 import { formatNumber, numberToKorean, calculateTotals, formatPhoneNumber, formatBizNo } from './utils';
 
-const INITIAL_STATE: DocumentState = {
+const INITIAL_STATE: DocumentState & { bankAccount: string } = {
   type: DocumentType.ESTIMATE,
   docNo: `DOC-${new Date().getTime().toString().slice(-6)}`,
   date: new Date().toISOString().split('T')[0],
@@ -49,12 +49,13 @@ const INITIAL_STATE: DocumentState = {
   taxOption: TaxOption.VAT_EXCLUDED,
   stampUrl: null,
   stampPos: { x: 74, y: 19 },
-  stampSize: 60
+  stampSize: 60,
+  bankAccount: ''
 };
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
-  const [doc, setDoc] = useState<DocumentState>(INITIAL_STATE);
+  const [doc, setDoc] = useState<DocumentState & { bankAccount: string }>(INITIAL_STATE);
   const [isExporting, setIsExporting] = useState(false);
   const pagesRef = useRef<(HTMLDivElement | null)[]>([]);
   const draggingRef = useRef(false);
@@ -162,6 +163,7 @@ export default function App() {
         const imgData = canvas.toDataURL('image/png');
         
         if (i > 0) pdf.addPage();
+        
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
       
@@ -192,16 +194,18 @@ export default function App() {
   const { subTotal, vat, total } = calculateTotals(doc.items, doc.taxOption);
   const inputBaseClass = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black font-medium block transition-shadow";
   const itemInputClass = "w-full bg-white border-b border-gray-300 text-sm py-1 px-1 focus:border-blue-500 outline-none text-black font-medium";
-  const labelCellClass = "border border-gray-900 bg-gray-50 px-2 py-1.5 text-center font-bold text-gray-800 align-middle whitespace-nowrap text-xs";
-  const valueCellClass = "border border-gray-900 px-3 py-1.5 text-gray-900 font-medium align-middle text-sm break-all leading-tight";
+  
+  // 🚨 정렬 수정: align-middle과 padding-y를 제거하거나 최소화하여 높이 중앙 정렬 유도
+  const labelCellClass = "border border-gray-900 bg-gray-50 px-2 py-1 text-center font-bold text-gray-800 align-middle whitespace-nowrap text-xs";
+  const valueCellClass = "border border-gray-900 px-3 py-1 text-gray-900 font-medium align-middle text-sm break-all leading-tight";
 
-  // 🧠 [핵심] 유동적 페이지 분할 로직 (사용자 요청 완벽 반영)
+  // 🧠 사용자 요청대로 복잡한 페이지 분할 로직 구현
   const getPageChunks = () => {
     const items = doc.items;
     const totalCount = items.length;
     const chunks: { items: Item[], limit: number, startIndex: number }[] = [];
 
-    // Case 1: 1장으로 끝나는 경우 -> 10칸
+    // 1. 전체가 10개 이하라면 -> 1페이지에 10칸으로 끝
     if (totalCount <= 10) {
       chunks.push({ 
         items: items, 
@@ -211,37 +215,37 @@ export default function App() {
       return chunks;
     }
 
-    // Case 2: 2장 이상인 경우
-    let currentIndex = 0;
+    // 2. 2페이지 이상 넘어가는 경우
+    let currentIdx = 0;
 
-    // --- 첫 번째 장 (이어지니까 16칸) ---
+    // --- 첫 번째 페이지: 이어지는 내용이 있으므로 16칸 ---
     chunks.push({
       items: items.slice(0, 16),
       limit: 16,
       startIndex: 0
     });
-    currentIndex += 16;
+    currentIdx += 16;
 
-    // --- 중간 및 마지막 장 루프 ---
-    while (currentIndex < totalCount) {
-      const remaining = totalCount - currentIndex;
+    // --- 두 번째 페이지부터 루프 ---
+    while (currentIdx < totalCount) {
+      const remaining = totalCount - currentIdx;
       
-      // 남은 게 20개 이하면 -> 마지막 장 (20칸)
+      // 만약 이번이 마지막 페이지가 된다면 (남은 게 20개 이하) -> 20칸
       if (remaining <= 20) {
         chunks.push({
-          items: items.slice(currentIndex),
+          items: items.slice(currentIdx),
           limit: 20,
-          startIndex: currentIndex
+          startIndex: currentIdx
         });
-        break;
+        break; // 루프 종료
       } else {
-        // 남은 게 20개보다 많으면 -> 중간 장 (꽉 채워서 26칸)
+        // 아직도 내용이 많아서 더 넘겨야 한다면 (중간 페이지) -> 26칸 (꽉 채움)
         chunks.push({
-          items: items.slice(currentIndex, currentIndex + 26),
+          items: items.slice(currentIdx, currentIdx + 26),
           limit: 26,
-          startIndex: currentIndex
+          startIndex: currentIdx
         });
-        currentIndex += 26;
+        currentIdx += 26;
       }
     }
 
@@ -614,6 +618,15 @@ export default function App() {
                 <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">연락처</label>
                 <input placeholder="010-0000-0000" value={doc.supplier.contact} onChange={(e) => handleSupplierChange('contact', e.target.value)} className={inputBaseClass} />
               </div>
+              <div className="col-span-2">
+                <label className="block text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-tighter">입금 계좌 (은행/계좌/예금주)</label>
+                <input 
+                  placeholder="OO은행 123-456-789000 (예금주: 홍길동)" 
+                  value={doc.bankAccount} 
+                  onChange={(e) => setDoc(prev => ({ ...prev, bankAccount: e.target.value }))} 
+                  className={inputBaseClass} 
+                />
+              </div>
             </div>
           </section>
 
@@ -834,7 +847,7 @@ export default function App() {
 
             <table className="w-full border-collapse border border-gray-900 text-xs mb-2">
               <thead>
-                  <tr className="bg-gray-100 text-gray-800 font-bold h-8">
+                  <tr className="bg-gray-100 text-gray-800 font-bold h-9">
                       <th className="border border-gray-900 px-1 w-10 text-center align-middle">NO</th>
                       <th className="border border-gray-900 px-2 text-center align-middle">품목명</th>
                       <th className="border border-gray-900 px-1 w-16 text-center align-middle">규격</th>
@@ -847,7 +860,8 @@ export default function App() {
                 {chunk.items.map((item, idx) => {
                   const globalIdx = chunk.startIndex + idx + 1;
                   return (
-                    <tr key={item.id} className="h-8 text-gray-900 hover:bg-gray-50">
+                    <tr key={item.id} className="h-9 text-gray-900 hover:bg-gray-50">
+                      {/* 👇 align-middle 확실히 적용 */}
                       <td className="border border-gray-900 px-1 text-center font-bold align-middle text-gray-600">{globalIdx}</td>
                       <td className="border border-gray-900 px-2 font-medium align-middle text-left">{item.name}</td>
                       <td className="border border-gray-900 px-1 text-center align-middle text-gray-600">{item.spec}</td>
@@ -857,9 +871,8 @@ export default function App() {
                     </tr>
                   );
                 })}
-                {/* 동적으로 계산된 limit 만큼 빈 칸 채우기 */}
                 {Array.from({ length: Math.max(0, chunk.limit - chunk.items.length) }).map((_, i) => (
-                    <tr key={`filler-${i}`} className="h-8">
+                    <tr key={`filler-${i}`} className="h-9">
                       <td className="border border-gray-900 px-1"></td>
                       <td className="border border-gray-900 px-2"></td>
                       <td className="border border-gray-900 px-1"></td>
@@ -871,11 +884,11 @@ export default function App() {
               </tbody>
               {pageIndex === pageChunks.length - 1 && (
                 <tfoot>
-                  <tr className="bg-gray-50 h-8 font-bold text-gray-800">
+                  <tr className="bg-gray-50 h-9 font-bold text-gray-800">
                       <td colSpan={3} className="border border-gray-900 px-4 text-center align-middle">소 계</td>
                       <td colSpan={3} className="border border-gray-900 px-4 text-right align-middle">{formatNumber(subTotal)}</td>
                   </tr>
-                  <tr className="bg-gray-50 h-8 font-bold text-gray-800">
+                  <tr className="bg-gray-50 h-9 font-bold text-gray-800">
                       <td colSpan={3} className="border border-gray-900 px-4 text-center align-middle">부 가 세 (10%)</td>
                       <td colSpan={3} className="border border-gray-900 px-4 text-right align-middle">{formatNumber(vat)}</td>
                   </tr>
@@ -900,7 +913,7 @@ export default function App() {
                 <ul className="list-disc pl-4 space-y-0.5">
                     <li>본 문서는 법적 효력을 보장하지 않으며 거래 증빙용으로 활용하십시오.</li>
                     <li>위 금액에는 부가가치세가 {doc.taxOption === TaxOption.VAT_INCLUDED ? '포함되어 있습니다.' : '별도로 부과됩니다.'}</li>
-                    <li>입금계좌: __________________________________________________________________</li>
+                    <li>입금계좌: <span className="font-bold text-black">{doc.bankAccount || '__________________________________________________________________'}</span></li>
                 </ul>
               </div>
             )}
