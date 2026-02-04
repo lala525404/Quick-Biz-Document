@@ -52,12 +52,6 @@ const INITIAL_STATE: DocumentState = {
   stampSize: 60
 };
 
-// 🚨 사용자님 요청 반영: 황금 비율 설정
-// 1페이지: 16개 (여백 없이 꽉 참)
-// 2페이지~: 20개 (잘리지 않고 안전함)
-const ITEMS_PER_FIRST_PAGE = 16; 
-const ITEMS_PER_SUBSEQUENT_PAGE = 20;
-
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
   const [doc, setDoc] = useState<DocumentState>(INITIAL_STATE);
@@ -148,7 +142,6 @@ export default function App() {
     try {
       await document.fonts.ready;
       
-      // A4 사이즈 강제 고정 (210mm x 297mm)
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = 210; 
       const pdfHeight = 297; 
@@ -157,7 +150,6 @@ export default function App() {
         const page = activePages[i];
         if (!page) continue;
 
-        // 화면에 보이는 그대로 고화질 캡처
         const canvas = await html2canvas(page, {
           scale: 2, 
           useCORS: true,
@@ -170,8 +162,6 @@ export default function App() {
         const imgData = canvas.toDataURL('image/png');
         
         if (i > 0) pdf.addPage();
-        
-        // PDF에 1:1 사이즈로 삽입 (찌그러짐/잘림 없음)
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
       
@@ -205,15 +195,56 @@ export default function App() {
   const labelCellClass = "border border-gray-900 bg-gray-50 px-2 py-1.5 text-center font-bold text-gray-800 align-middle whitespace-nowrap text-xs";
   const valueCellClass = "border border-gray-900 px-3 py-1.5 text-gray-900 font-medium align-middle text-sm break-all leading-tight";
 
+  // 🧠 [핵심] 유동적 페이지 분할 로직 (사용자 요청 완벽 반영)
   const getPageChunks = () => {
-    const chunks: Item[][] = [];
-    let currentIdx = 0;
-    chunks.push(doc.items.slice(0, ITEMS_PER_FIRST_PAGE));
-    currentIdx = ITEMS_PER_FIRST_PAGE;
-    while (currentIdx < doc.items.length) {
-      chunks.push(doc.items.slice(currentIdx, currentIdx + ITEMS_PER_SUBSEQUENT_PAGE));
-      currentIdx += ITEMS_PER_SUBSEQUENT_PAGE;
+    const items = doc.items;
+    const totalCount = items.length;
+    const chunks: { items: Item[], limit: number, startIndex: number }[] = [];
+
+    // Case 1: 1장으로 끝나는 경우 -> 10칸
+    if (totalCount <= 10) {
+      chunks.push({ 
+        items: items, 
+        limit: 10,
+        startIndex: 0 
+      });
+      return chunks;
     }
+
+    // Case 2: 2장 이상인 경우
+    let currentIndex = 0;
+
+    // --- 첫 번째 장 (이어지니까 16칸) ---
+    chunks.push({
+      items: items.slice(0, 16),
+      limit: 16,
+      startIndex: 0
+    });
+    currentIndex += 16;
+
+    // --- 중간 및 마지막 장 루프 ---
+    while (currentIndex < totalCount) {
+      const remaining = totalCount - currentIndex;
+      
+      // 남은 게 20개 이하면 -> 마지막 장 (20칸)
+      if (remaining <= 20) {
+        chunks.push({
+          items: items.slice(currentIndex),
+          limit: 20,
+          startIndex: currentIndex
+        });
+        break;
+      } else {
+        // 남은 게 20개보다 많으면 -> 중간 장 (꽉 채워서 26칸)
+        chunks.push({
+          items: items.slice(currentIndex, currentIndex + 26),
+          limit: 26,
+          startIndex: currentIndex
+        });
+        currentIndex += 26;
+      }
+    }
+
     return chunks;
   };
 
@@ -693,13 +724,12 @@ export default function App() {
             key={pageIndex}
             ref={el => { pagesRef.current[pageIndex] = el; }}
             className="bg-white shadow-2xl relative shrink-0" 
-            // 🚨 수정: 너비와 높이를 A4(210x297mm)로 강제 고정 (WYSIWYG 구현의 핵심)
             style={{ 
               width: '210mm', 
               height: '297mm', 
-              padding: '12mm',  // 여백 확보
+              padding: '12mm',
               boxSizing: 'border-box',
-              overflow: 'hidden' // 넘치면 아예 안 보이게 해서 경각심 주기
+              overflow: 'hidden'
             }}
           >
             {pageIndex === 0 && doc.stampUrl && (
@@ -721,13 +751,11 @@ export default function App() {
 
             {pageIndex === 0 ? (
               <>
-                {/* 타이틀 크기 및 마진 축소 (text-2xl, mb-4) */}
                 <div className="relative mb-6 flex justify-center pt-2">
                   <h1 className="text-2xl font-black tracking-[0.5em] text-gray-900 border-b-4 border-double border-gray-900 px-12 pb-3">
                     {doc.type === DocumentType.ESTIMATE ? '견 적 서' : doc.type === DocumentType.TRANSACTION_STATEMENT ? '거래명세서' : '영 수 증'}
                   </h1>
                 </div>
-                {/* 섹션 간격 축소 */}
                 <div className="flex gap-3 mb-4 items-stretch">
                   <div className="flex-1 flex flex-col gap-3">
                     <div className="flex flex-col gap-1.5">
@@ -740,7 +768,6 @@ export default function App() {
                           <span className="text-sm text-gray-900 font-bold">{doc.docNo}</span>
                       </div>
                     </div>
-                    {/* 공급받는자 박스 축소 */}
                     <div className="border-2 border-gray-900 p-3 flex-1 flex flex-col justify-center bg-white rounded-sm">
                       <div className="text-xl mb-1 text-gray-900 flex items-baseline gap-2 border-b-2 border-gray-300 pb-2">
                           <span className="font-black text-2xl">{doc.client.name || '(거래처명)'}</span>
@@ -789,7 +816,6 @@ export default function App() {
                     </table>
                   </div>
                 </div>
-                {/* 합계란 축소 */}
                 <div className="border-t-2 border-b-2 border-gray-900 mb-6 py-2 px-4 flex justify-between items-center bg-gray-50">
                   <span className="font-bold text-lg text-gray-800">합계금액</span>
                   <div className="text-right flex items-baseline gap-3">
@@ -806,9 +832,8 @@ export default function App() {
               </div>
             )}
 
-            <table className="w-full border-collapse border border-gray-900 text-xs mb-6">
+            <table className="w-full border-collapse border border-gray-900 text-xs mb-2">
               <thead>
-                  {/* 헤더 높이 h-8 */}
                   <tr className="bg-gray-100 text-gray-800 font-bold h-8">
                       <th className="border border-gray-900 px-1 w-10 text-center align-middle">NO</th>
                       <th className="border border-gray-900 px-2 text-center align-middle">품목명</th>
@@ -819,12 +844,9 @@ export default function App() {
                   </tr>
               </thead>
               <tbody>
-                {chunk.map((item, idx) => {
-                  const globalIdx = pageIndex === 0 
-                    ? idx + 1 
-                    : ITEMS_PER_FIRST_PAGE + (pageIndex - 1) * ITEMS_PER_SUBSEQUENT_PAGE + idx + 1;
+                {chunk.items.map((item, idx) => {
+                  const globalIdx = chunk.startIndex + idx + 1;
                   return (
-                    // 행 높이 h-8로 축소 (핵심)
                     <tr key={item.id} className="h-8 text-gray-900 hover:bg-gray-50">
                       <td className="border border-gray-900 px-1 text-center font-bold align-middle text-gray-600">{globalIdx}</td>
                       <td className="border border-gray-900 px-2 font-medium align-middle text-left">{item.name}</td>
@@ -835,9 +857,8 @@ export default function App() {
                     </tr>
                   );
                 })}
-                {Array.from({ 
-                  length: Math.max(0, (pageIndex === 0 ? ITEMS_PER_FIRST_PAGE : ITEMS_PER_SUBSEQUENT_PAGE) - chunk.length) 
-                }).map((_, i) => (
+                {/* 동적으로 계산된 limit 만큼 빈 칸 채우기 */}
+                {Array.from({ length: Math.max(0, chunk.limit - chunk.items.length) }).map((_, i) => (
                     <tr key={`filler-${i}`} className="h-8">
                       <td className="border border-gray-900 px-1"></td>
                       <td className="border border-gray-900 px-2"></td>
@@ -865,6 +886,14 @@ export default function App() {
                 </tfoot>
               )}
             </table>
+            
+            {/* 내용 이어짐 표시 (마지막 페이지가 아닐 경우) */}
+            {pageIndex < pageChunks.length - 1 && (
+              <div className="w-full text-right text-[10px] text-gray-500 font-bold mb-8 italic">
+                (다음 페이지에 내용 이어짐...)
+              </div>
+            )}
+
             {pageIndex === pageChunks.length - 1 && (
               <div className="border border-gray-300 p-3 text-[11px] text-gray-600 leading-relaxed bg-gray-50 rounded shadow-sm">
                 <span className="font-bold text-gray-800 block mb-1 text-xs">[참고사항]</span>
