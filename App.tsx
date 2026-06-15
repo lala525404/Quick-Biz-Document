@@ -530,15 +530,24 @@ export default function App() {
             <div className="space-y-5">
               <h5 className="text-slate-900 font-black uppercase tracking-widest text-[9px]">Legal</h5>
               <ul className="space-y-2.5 font-bold text-xs">
-                <li className="hover:text-blue-600 cursor-pointer">이용약관</li>
-                <li className="hover:text-blue-600 cursor-pointer">개인정보처리방침</li>
-                <li 
-                  className="hover:text-blue-600 cursor-pointer"
-                  onClick={handleCopyEmail}
-                >
-                  광고 제휴 문의
-                </li>
-                <li className="hover:text-blue-600 cursor-pointer">기술 지원</li>
+               <li><a href="/terms.html" target="_blank" className="hover:text-blue-600">이용약관</a></li>
+               <li><a href="/privacy.html" target="_blank" className="hover:text-blue-600">개인정보처리방침</a></li>
+               <li><a href="/guide.html" target="_blank" className="hover:text-blue-600">이용 가이드</a></li>
+              <li>
+                <button
+                className="hover:text-blue-600 cursor-pointer"
+                onClick={() => {
+                  navigator.clipboard.writeText('lala525.404@gmail.com').then(() => {
+                    alert('이메일이 복사되었습니다: lala525.404@gmail.com');
+                 });
+              }}
+           >
+            광고 제휴 문의
+             </button>
+            </li>
+            <li>
+             <a href="mailto:lala525.404@gmail.com" className="hover:text-blue-600">기술 지원</a>
+            </li>
               </ul>
             </div>
           </div>
